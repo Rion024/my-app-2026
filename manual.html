@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Market - 使用マニュアル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Yu Mincho", "游明朝", "Georgia", serif;
+            background-color: #f4edd8;
+            color: #2a1f15;
+            line-height: 1.8;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 3rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 3px double #7d6132;
+            padding-bottom: 2rem;
+        }
+
+        .title {
+            font-size: 2.2rem;
+            color: #5c4314;
+            margin-bottom: 0.5rem;
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: #7d6132;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .toc {
+            background-color: #f9f6f0;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #dcd4c8;
+            border-radius: 4px;
+        }
+
+        .toc h2 {
+            font-size: 1.2rem;
+            color: #5c4314;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #c39b50;
+            padding-bottom: 0.5rem;
+        }
+
+        .toc ol {
+            margin-left: 2rem;
+        }
+
+        .toc li {
+            margin-bottom: 0.7rem;
+            color: #5c4314;
+        }
+
+        .toc a {
+            color: #8b6f47;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .toc a:hover {
+            color: #c39b50;
+            text-decoration: underline;
+        }
+
+        section {
+            margin-bottom: 3rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: #5c4314;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #c39b50;
+            padding-left: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            color: #7d6132;
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            border-bottom: 1px dashed #dcd4c8;
+            padding-bottom: 0.4rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            line-height: 1.9;
+        }
+
+        ul, ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .highlight {
+            background-color: #fffaed;
+            border-left: 4px solid #c39b50;
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            border-radius: 2px;
+        }
+
+        .highlight strong {
+            color: #8b1e1e;
+        }
+
+        .caution {
+            background-color: #fef5f0;
+            border-left: 4px solid #8b1e1e;
+            padding: 1.2rem;
+            margin: 1.5rem 0;
+            border-radius: 2px;
+        }
+
+        .caution strong {
+            color: #8b1e1e;
+        }
+
+        .feature-box {
+            background-color: #f9f6f0;
+            border: 1px solid #dcd4c8;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .feature-box h4 {
+            color: #c39b50;
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background-color: white;
+            border: 1px solid #dcd4c8;
+        }
+
+        th {
+            background-color: #f0e8dc;
+            color: #5c4314;
+            padding: 1rem;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #dcd4c8;
+        }
+
+        td {
+            padding: 0.8rem 1rem;
+            border: 1px solid #dcd4c8;
+            color: #2a1f15;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fdfbf8;
+        }
+
+        .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+        }
+
+        .step-list li {
+            counter-increment: step-counter;
+            margin-bottom: 1.2rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+
+        .step-list li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background-color: #c39b50;
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .faq-item {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px dashed #dcd4c8;
+        }
+
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+
+        .faq-question {
+            font-weight: bold;
+            color: #5c4314;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .faq-question::before {
+            content: "Q. ";
+            color: #c39b50;
+        }
+
+        .faq-answer {
+            color: #2a1f15;
+            margin-left: 1rem;
+            padding-left: 1rem;
+            border-left: 2px solid #c39b50;
+        }
+
+        .faq-answer::before {
+            content: "A. ";
+            color: #c39b50;
+            font-weight: bold;
+            margin-right: 0.3rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #dcd4c8;
+            font-size: 0.9rem;
+            color: #7d6132;
+        }
+
+        .breadcrumb {
+            margin-bottom: 2rem;
+        }
+
+        .breadcrumb a {
+            color: #8b6f47;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                padding: 1.5rem;
+            }
+
+            .title {
+                font-size: 1.6rem;
+            }
+
+            h2 {
+                font-size: 1.3rem;
+            }
+
+            h3 {
+                font-size: 1.1rem;
+            }
+
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="title">Memory Market</h1>
+            <p class="subtitle">記憶査定所 - 使用マニュアル</p>
+        </header>
+
+        <div class="breadcrumb">
+            <a href="index.html">← アプリケーションに戻る</a>
+        </div>
+
+        <div class="toc">
+            <h2>目次</h2>
+            <ol>
+                <li><a href="#overview">概要と特徴</a></li>
+                <li><a href="#getting-started">クイックスタート</a></li>
+                <li><a href="#how-to-use">使用方法（詳細）</a></li>
+                <li><a href="#emotions">感情カテゴリについて</a></li>
+                <li><a href="#appraisal-metrics">査定メトリクス解説</a></li>
+                <li><a href="#vault-management">記憶保管庫の管理</a></li>
+                <li><a href="#faq">よくある質問</a></li>
+                <li><a href="#tips">使用のコツ</a></li>
+            </ol>
+        </div>
+
+        <section id="overview">
+            <h2>概要と特徴</h2>
+
+            <h3>Memory Market とは</h3>
+            <p>
+                「Memory Market - 記憶査定所」は、あなたの大切な記憶の感情的価値を
+                査定するユニークなWebアプリケーションです。市場における客観的な価格ではなく、
+                あなたの心に残った記憶の重さを、独自の基準で量ります。
+            </p>
+
+            <h3>主な機能</h3>
+            <ul>
+                <li><strong>記憶の入力</strong> - 記憶の詳細を記入または音声で記録</li>
+                <li><strong>AIによる整理</strong> - 入力内容をAIが自動的に整理・精錬</li>
+                <li><strong>感情査定</strong> - 複数の指標から記憶を多角的に評価</li>
+                <li><strong>査定書の発行</strong> - 査定価格と査定等級を記載した査定書を発行</li>
+                <li><strong>記憶保管庫</strong> - 査定済みの記憶を保存・管理</li>
+                <li><strong>再査定</strong> - 記憶の新しい断片を追加して再度査定可能</li>
+                <li><strong>音声入力対応</strong> - ブラウザの音声認識機能で記憶を音声入力</li>
+            </ul>
+
+            <div class="highlight">
+                <strong>💡 重要：</strong> このアプリケーションは、あなたの記憶を預かります。
+                査定済みの記憶はブラウザのローカルストレージに自動保存されます。
+                ブラウザのキャッシュをクリアするとデータが削除される可能性があります。
+            </div>
+        </section>
+
+        <section id="getting-started">
+            <h2>クイックスタート</h2>
+
+            <p>Memory Market を使い始めるための基本的な流れです：</p>
+
+            <ol class="step-list">
+                <li>
+                    <strong>アプリケーションを開く</strong>
+                    <p>ブラウザで Memory Market のページを開きます。</p>
+                </li>
+                <li>
+                    <strong>査定窓口で記憶を入力</strong>
+                    <p>記憶の題名と詳細を入力します。他の項目は任意です。</p>
+                </li>
+                <li>
+                    <strong>AIが記憶を整理</strong>
+                    <p>入力内容が自動的に整理されます。整理内容を確認します。</p>
+                </li>
+                <li>
+                    <strong>査定を実行</strong>
+                    <p>整理された記憶に対して査定を実行します。</p>
+                </li>
+                <li>
+                    <strong>査定結果を確認</strong>
+                    <p>査定書が表示され、査定価格と査定等級が記載されます。</p>
+                </li>
+                <li>
+                    <strong>保管庫に保存</strong>
+                    <p>記憶を保管庫に保存して管理します。</p>
+                </li>
+            </ol>
+
+            <div class="caution">
+                <strong>⚠️ 注意：</strong> 初回使用時には、ブラウザがマイクへのアクセスを要求する場合があります。
+                音声入力を使用する場合は、許可してください。使用しない場合はキャンセルしても大丈夫です。
+            </div>
+        </section>
+
+        <section id="faq">
+            <h2>よくある質問</h2>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    音声入力がうまくいきません。どうしたら良いですか？
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        以下を確認してください：
+                    </p>
+                    <ul>
+                        <li>ブラウザにマイクへのアクセス許可がされているか確認</li>
+                        <li>マイクが正しく接続・認識されているか確認</li>
+                        <li>周囲が静かか確認（ノイズが多いと認識しにくい）</li>
+                        <li>ゆっくり、はっきり話す</li>
+                        <li>別のブラウザを試す（Chrome や Firefox が推奨）</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    査定価格はどうやって決まりますか？
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        査定価格は、記憶の以下の要素を分析して AI が算出します：
+                    </p>
+                    <ul>
+                        <li>希少性（人生で二度と起こるか）</li>
+                        <li>感情濃度（感情がどれほど濃いか）</li>
+                        <li>再現困難度（将来再現できるか）</li>
+                        <li>未練係数（後悔や心残り）</li>
+                        <li>記憶の曖昧さ（忘却や改変）</li>
+                    </ul>
+                    <p>
+                        これらをもとに、感情的な価値が算出されます。
+                        市場における客観的な価格ではなく、あくまで感情的価値です。
+                    </p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    データはどこに保存されますか？安全ですか？
+                </div>
+                <div class="faq-answer">
+                    <p>
+                        保管庫の記憶データはブラウザのローカルストレージに保存されます。
+                        あなたのコンピュータまたはデバイスにのみ保存され、
+                        サーバーに送信されることはありません。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Memory Market - 記憶査定所</p>
+            <p>このマニュアルは、より良い体験をお届けするために作成されました。</p>
+            <p style="margin-top: 1.5rem; font-size: 0.85rem;">
+                © 2026 Memory Market. All rights reserved.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
