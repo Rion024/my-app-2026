@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Market - 記憶査定所</title>
+    <style>
+        /* ==========================================================================
+           1. DESIGN TOKENS & SYSTEM THEME (古い記憶の質屋・古物商の世界観)
+           ========================================================================== */
+        :root {
+            --bg-dark: #0f0c08; 
+            --bg-panel: #1a140f; 
+            --bg-panel-light: #261e16; 
+            --bg-paper: #f4edd8; 
+            --text-main: #e8dec9; 
+            --text-muted: #a3937c; 
+            --text-dark: #2a1f15; 
+            --accent-gold: #c39b50; 
+            --accent-gold-glow: rgba(195, 155, 80, 0.2);
+            --accent-red: #8b1e1e; 
+            --border-color: #3d3023; 
+            --font-serif: "Yu Mincho", "游明朝", "Georgia", "Times New Roman", serif;
+            --font-mono: "Courier New", Courier, "Courier Bold", monospace;
+            --transition-speed: 0.3s;
+        }
+
+        /* 羊皮紙のような細かなノイズ質感のオーバーレイ */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background-image: radial-gradient(rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.6) 100%);
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-serif);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 10%, rgba(195, 155, 80, 0.08) 0%, transparent 60%);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 2px;
+            border: 1px solid var(--accent-gold);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-gold);
+        }
+
+        /* ==========================================================================
+           2. NAVIGATION & HEADER
+           ========================================================================== */
+        header {
+            background-color: rgba(15, 12, 8, 0.95);
+            border-bottom: 2px solid var(--accent-gold);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-area {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-title {
+            font-family: var(--font-serif);
+            color: var(--accent-gold);
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            text-decoration: none;
+        }
+
+        .logo-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        nav button {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-family: var(--font-serif);
+            font-size: 0.95rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        nav button:hover, nav button.active {
+            color: var(--accent-gold);
+            border-color: rgba(195, 155, 80, 0.4);
+            background-color: rgba(195, 155, 80, 0.05);
+        }
+
+        nav button.active {
+            border-color: var(--accent-gold);
+            background-color: rgba(195, 155, 80, 0.1);
+            font-weight: bold;
+        }
+
+        /* ==========================================================================
+           3. MAIN LAYOUT & SECTIONS
+           ========================================================================== */
+        main {
+            flex: 1;
+            max-width: 800px;
+            width: 100%;
+            margin: 2.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.8s ease forwards;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==========================================================================
+           4. SHARED FORM ELEMENTS
+           ========================================================================== */
+        .intro-box {
+            text-align: center;
+            margin-bottom: 3rem;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 2.5rem 2rem;
+            border-radius: 4px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .intro-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: var(--accent-gold);
+        }
+
+        .intro-box h2 {
+            font-size: 1.6rem;
+            color: var(--accent-gold);
+            margin-bottom: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: normal;
+        }
+
+        .intro-box p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            margin: 0 auto;
+            line-height: 1.8;
+            text-align: justify;
+        }
+
+        .form-container {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 3rem 2.5rem;
+            border-radius: 4px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--accent-gold);
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .form-group label span {
+            color: var(--accent-red);
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 1rem;
+            background-color: rgba(10, 8, 6, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            border-radius: 2px;
+            transition: all var(--transition-speed);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 8px rgba(195, 155, 80, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c39b50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1.2rem center;
+            background-size: 16px;
+            padding-right: 3rem;
+        }
+
+        .btn-submit {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--accent-red) 0%, #5c1111 100%);
+            border: 1px solid var(--accent-gold);
+            color: var(--text-main);
+            font-size: 1.15rem;
+            font-family: var(--font-serif);
+            letter-spacing: 4px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all var(--transition-speed);
+            position: relative;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #a62626 0%, var(--accent-red) 100%);
+            box-shadow: 0 4px 20px rgba(195, 155, 80, 0.2);
+            border-color: #ffd075;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            background-color: transparent;
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            font-family: var(--font-serif);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all var(--transition-speed);
+            border-radius: 2px;
+            text-align: center;
+        }
+
+        .btn-action:hover {
+            background-color: rgba(195, 155, 80, 0.1);
+            color: #ffd075;
+            border-color: #ffd075;
+        }
+
+        /* ==========================================================================
+           5. ORGANIZE RESULT (整理結果の確認画面)
+           ========================================================================== */
+        .record-box {
+            background-color: rgba(10, 8, 6, 0.4);
+            border: 1px dashed rgba(125, 97, 50, 0.4);
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-family: var(--font-serif);
+            font-size: 0.95rem;
+            line-height: 1.8;
+            border-radius: 2px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .organize-textarea {
+            width: 100%;
+            padding: 1.5rem;
+            font-family: var(--font-serif);
+            font-size: 1.05rem;
+            line-height: 1.8;
+            border-radius: 2px;
+            resize: vertical;
+            min-height: 150px;
+            transition: all var(--transition-speed);
+        }
+
+        .organize-textarea[readonly] {
+            background-color: rgba(10, 8, 6, 0.4);
+            color: var(--text-main);
+            border: 1px dashed var(--accent-gold);
+            box-shadow: none;
+        }
+
+        .organize-textarea:not([readonly]) {
+            background-color: var(--bg-paper);
+            color: var(--text-dark);
+            border: 1px solid var(--accent-red);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .actions-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2.5rem;
+        }
+
+        /* ==========================================================================
+           6. ASSESMENT RESULT (査定書)
+           ========================================================================== */
+        .certificate {
+            background-color: var(--bg-paper);
+            color: var(--text-dark);
+            border: 3px double #7d6132;
+            width: 100%;
+            max-width: 650px;
+            position: relative;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+            border-radius: 2px;
+            padding: 3rem 2.5rem;
+            background-image: radial-gradient(circle at 50% 50%, rgba(244, 237, 216, 0.9) 0%, rgba(228, 218, 191, 1) 100%);
+            margin: 0 auto;
+        }
+
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            border: 1px solid rgba(125, 97, 50, 0.4);
+            pointer-events: none;
+        }
+
+        .cert-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px dashed rgba(125, 97, 50, 0.5);
+            padding-bottom: 1.5rem;
+        }
+
+        .cert-header h2 {
+            font-family: var(--font-serif);
+            color: #5c4314;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            font-weight: bold;
+        }
+
+        .cert-header p {
+            font-size: 0.75rem;
+            color: #7d6132;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-top: 0.3rem;
+        }
+
+        .highlight-panel {
+            background-color: rgba(125, 97, 50, 0.08);
+            border: 1px solid rgba(125, 97, 50, 0.3);
+            padding: 1.8rem;
+            border-radius: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+        }
+
+        .highlight-panel::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 10%; height: 80%; width: 4px;
+            background-color: var(--accent-red);
+        }
+
+        .price-box { display: flex; flex-direction: column; }
+        .price-label { font-size: 0.75rem; color: #7d6132; letter-spacing: 1px; }
+        .price-val { font-size: 2.5rem; color: var(--accent-red); font-weight: bold; margin-top: 0.2rem; }
+
+        .rank-box {
+            display: flex; flex-direction: column; align-items: center;
+            border-left: 1px dashed rgba(125, 97, 50, 0.3); padding-left: 2rem;
+        }
+        .rank-label { font-size: 0.7rem; color: #7d6132; letter-spacing: 1px; }
+        .rank-val { font-size: 3.5rem; font-weight: bold; line-height: 1; color: #5c4314; text-shadow: 1px 1px 1px rgba(255,255,255,0.8); }
+
+        .detail-row {
+            display: grid; grid-template-columns: 120px 1fr; margin-bottom: 1.2rem; font-size: 0.95rem; align-items: flex-start;
+        }
+        .detail-row .label { color: #7d6132; font-weight: bold; font-size: 0.85rem; letter-spacing: 1px; padding-top: 0.2rem; }
+        .detail-row .value { color: var(--text-dark); border-bottom: 1px solid rgba(125, 97, 50, 0.2); padding-bottom: 0.4rem; }
+
+        .memory-text-block {
+            margin: 1.5rem 0 2.5rem 0;
+            padding: 1.5rem;
+            background-color: rgba(125, 97, 50, 0.05);
+            border: 1px solid rgba(125, 97, 50, 0.3);
+            border-radius: 2px;
+        }
+        .memory-text-block .block-label {
+            display: block;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: #5c4314;
+            margin-bottom: 0.8rem;
+            letter-spacing: 1px;
+        }
+        .memory-text-block p {
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* 再査定時の比較表示ブロック */
+        #reappraisal-diff-block {
+            display: none; 
+            margin: 1.5rem 0 2.5rem 0; 
+            padding: 1.5rem; 
+            background-color: rgba(125, 97, 50, 0.05); 
+            border: 1px dashed rgba(195, 155, 80, 0.5); 
+            border-radius: 2px;
+        }
+
+        .metrics-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; margin: 2.5rem 0;
+        }
+        .metric-card {
+            background-color: rgba(125, 97, 50, 0.04); border: 1px dashed rgba(125, 97, 50, 0.4); padding: 1.2rem 1rem; text-align: center; border-radius: 2px;
+        }
+        .metric-card .m-label { display: block; font-size: 0.75rem; color: #7d6132; margin-bottom: 0.5rem; font-weight: bold; }
+        .metric-card .m-val { font-size: 1.3rem; color: var(--text-dark); font-weight: bold; }
+        .metric-card .m-bar-container { width: 100%; height: 4px; background-color: rgba(125, 97, 50, 0.15); margin-top: 0.6rem; overflow: hidden; }
+        .metric-card .m-bar { height: 100%; background-color: #7d6132; width: 0%; transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        .metric-card .m-bar.regret-bar { background-color: var(--accent-red); }
+        .metric-card .m-bar.noise-bar { background-color: #5c4314; }
+
+        .ai-comment-block {
+            background-color: rgba(125, 97, 50, 0.05); border-left: 3px solid var(--accent-red); border-right: 1px solid rgba(125, 97, 50, 0.2);
+            border-top: 1px solid rgba(125, 97, 50, 0.2); border-bottom: 1px solid rgba(125, 97, 50, 0.2); padding: 1.5rem; margin-top: 2rem;
+        }
+        .ai-comment-block .comment-title { display: block; font-weight: bold; font-size: 0.8rem; color: #5c4314; margin-bottom: 0.5rem; letter-spacing: 1px; }
+        .ai-comment-block p { font-size: 0.9rem; color: var(--text-dark); line-height: 1.7; text-align: justify; }
+
+        .cert-footer {
+            margin-top: 3rem; border-top: 1px dashed rgba(125, 97, 50, 0.4); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .cert-stamp {
+            border: 2px solid rgba(139, 30, 30, 0.6); color: rgba(139, 30, 30, 0.8); padding: 0.4rem 1rem; font-weight: bold; letter-spacing: 3px;
+            transform: rotate(-8deg); border-radius: 3px; font-size: 0.75rem; background-color: rgba(139, 30, 30, 0.05);
+        }
+
+        .actions-area {
+            display: flex; gap: 1.2rem; width: 100%; max-width: 650px; margin: 1.5rem auto 0;
+        }
+        .btn-action-panel {
+            flex: 1; padding: 1.1rem; background: transparent; border: 1px solid var(--accent-gold); color: var(--accent-gold); font-family: var(--font-serif);
+            font-size: 1.05rem; letter-spacing: 1px; cursor: pointer; border-radius: 2px; transition: all var(--transition-speed); text-align: center;
+        }
+        .btn-action-panel:hover { background-color: rgba(195, 155, 80, 0.08); border-color: #ffd075; color: #ffd075; }
+        .btn-action-panel.primary { background: linear-gradient(135deg, var(--accent-gold) 0%, #a1782f 100%); color: var(--bg-dark); border: none; font-weight: bold; }
+        .btn-action-panel.primary:hover { background: linear-gradient(135deg, #ffd075 0%, var(--accent-gold) 100%); box-shadow: 0 4px 15px rgba(195, 155, 80, 0.3); }
+
+        /* ==========================================================================
+           7. HISTORY VIEW (古い台帳)
+           ========================================================================== */
+        .vault-header { text-align: center; margin-bottom: 2.5rem; }
+        .vault-header h2 { font-size: 1.8rem; color: var(--accent-gold); margin-bottom: 0.5rem; font-weight: normal; }
+        .vault-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+        .vault-controls { display: flex; justify-content: flex-end; margin-bottom: 1.5rem; }
+        .btn-clear-all {
+            background: transparent; border: 1px solid var(--accent-red); color: var(--accent-red); padding: 0.5rem 1.2rem;
+            font-family: var(--font-serif); cursor: pointer; font-size: 0.85rem; transition: all 0.3s;
+        }
+        .btn-clear-all:hover { background-color: rgba(139, 30, 30, 0.1); }
+
+        .history-list { display: flex; flex-direction: column; gap: 1.2rem; }
+        .history-card {
+            background-color: var(--bg-panel); border: 1px solid var(--border-color); border-left: 4px solid var(--accent-gold);
+            padding: 1.5rem 1.8rem; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 1.5rem; cursor: pointer; transition: all 0.3s;
+        }
+        .history-card:hover { transform: translateX(3px); border-color: var(--accent-gold); background-color: var(--bg-panel-light); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .card-details { display: flex; flex-direction: column; gap: 0.4rem; }
+        .card-title { font-size: 1.15rem; color: var(--text-main); }
+        .card-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; }
+        .card-price-rank { text-align: right; padding-right: 1.5rem; border-right: 1px dashed var(--border-color); }
+        .card-price { font-size: 1.25rem; color: var(--accent-gold); font-weight: bold; }
+        .card-rank { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.1rem; }
+        .btn-card-delete {
+            background: transparent; border: 1px solid transparent; color: var(--text-muted); padding: 0.5rem 1rem; cursor: pointer; transition: all 0.3s; z-index: 2;
+        }
+        .btn-card-delete:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+        .empty-vault-message { text-align: center; padding: 4rem 2rem; border: 1px dashed var(--border-color); color: var(--text-muted); background-color: rgba(26, 20, 15, 0.4); }
+
+        /* ==========================================================================
+           8. MODALS & LOADERS
+           ========================================================================== */
+        .dialogue-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 12, 8, 0.9); z-index: 2000;
+            display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .dialogue-overlay.active { opacity: 1; pointer-events: auto; }
+        .dialogue-box {
+            background-color: var(--bg-panel); border: 2px solid var(--accent-gold); padding: 2.2rem; max-width: 420px; width: 90%;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9); text-align: center;
+        }
+        .dialogue-box h3 { color: var(--accent-gold); font-size: 1.3rem; margin-bottom: 1rem; font-weight: normal; letter-spacing: 1px; }
+        .dialogue-box p { font-size: 0.95rem; color: var(--text-main); margin-bottom: 1.8rem; line-height: 1.7; }
+        .dialogue-buttons { display: flex; gap: 1rem; }
+        .dialogue-btn { flex: 1; padding: 0.8rem; font-family: var(--font-serif); font-size: 0.95rem; cursor: pointer; background: transparent; transition: all 0.3s; }
+        .dialogue-btn.cancel { border: 1px solid var(--border-color); color: var(--text-muted); }
+        .dialogue-btn.cancel:hover { color: var(--text-main); }
+        .dialogue-btn.confirm-delete { border: 1px solid var(--accent-red); color: var(--accent-red); }
+        .dialogue-btn.confirm-delete:hover { background-color: rgba(139, 30, 30, 0.1); }
+
+        .scanning-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(15, 12, 8, 0.95); z-index: 1000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+        }
+        .scanning-overlay.active { opacity: 1; pointer-events: auto; }
+        .antique-loader { width: 80px; height: 80px; position: relative; margin-bottom: 2rem; }
+        .antique-ring { position: absolute; width: 100%; height: 100%; border: 2px solid transparent; border-top: 2px solid var(--accent-gold); border-radius: 50%; animation: rotateAntique 1.8s linear infinite; }
+        .antique-ring-inner { position: absolute; top: 15%; left: 15%; width: 70%; height: 70%; border: 2px solid transparent; border-bottom: 2px solid var(--accent-red); border-radius: 50%; animation: rotateAntiqueInverse 2.5s linear infinite; }
+        @keyframes rotateAntique { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes rotateAntiqueInverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+        .scan-status { color: var(--accent-gold); font-size: 1.15rem; letter-spacing: 3px; margin-bottom: 0.5rem; }
+        .scan-detail { font-size: 0.85rem; color: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            .detail-row { grid-template-columns: 1fr; gap: 0.2rem; }
+            .metrics-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .history-card { grid-template-columns: 1fr; }
+            .card-price-rank { text-align: left; padding-right: 0; border-right: none; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.8rem; }
+            .btn-card-delete { align-self: flex-start; padding: 0.6rem 0; width: 100%; text-align: center; }
+            .actions-area { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-content">
+            <div class="logo-area">
+                <a href="#" class="logo-title" id="logo-click">Memory Market</a>
+                <span class="logo-sub">記憶査定所</span>
+            </div>
+            <nav>
+                <button id="nav-home" class="active">査定窓口</button>
+                <button id="nav-history">記憶保管庫</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- VIEW 1: HOME (INPUT FORM) -->
+        <section id="view-home" class="view-section active">
+            <div class="intro-box">
+                <h2>あなたの記憶、査定します。</h2>
+                <p>
+                    当店では、お客様の記憶に宿る感情の価値を査定しております。<br>
+                    市場における客観的な価格ではなく、あなたの中に残った記憶の重さを、当店独自の基準でお量りします。
+                </p>
+            </div>
+
+            <div class="form-container">
+                <form id="memory-form">
+                    <div class="form-group">
+                        <label for="title">記憶の題名 <span>(必須)</span></label>
+                        <input type="text" id="title" required placeholder="例：夕立を避けた神社の軒下">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="details">記憶の記録 <span>(必須)</span></label>
+                        <textarea id="details" required placeholder="当時の匂いや音、交わした言葉、心の揺れなど、記憶の断片をお書きください。箇条書きや断片的なメモでも、当店の記録係が断片を整理し、査定用の記録として整えます。"></textarea>
+                        
+                        <button type="button" id="btn-speech" class="btn-action" style="margin-top: 1rem;">
+                            <span id="speech-text">声で記録する</span>
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="period">記憶の年代</label>
+                        <input type="text" id="period" placeholder="例：十年前の夏">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="companion">同席者（一人の場合は空欄で構いません）</label>
+                        <input type="text" id="companion" placeholder="例：昔なじみの友人">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="emotion">主な感情</label>
+                        <select id="emotion">
+                            <option value="nostalgia">郷愁・切なさ (Nostalgia)</option>
+                            <option value="joy">喜び・幸福 (Euphoria)</option>
+                            <option value="sadness">悲しみ・喪失 (Melancholy)</option>
+                            <option value="anger">怒り・葛藤 (Friction)</option>
+                            <option value="fear">恐れ・トラウマ (Phobia)</option>
+                            <option value="love">愛情・慈しみ (Agape)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        記録係に記憶を預ける
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- VIEW 2: ORGANIZE RESULT (整理結果の確認) -->
+        <section id="view-organize-result" class="view-section">
+            <div class="intro-box">
+                <h2>記憶の整理</h2>
+                <p>
+                    入力された記録を、査定しやすい形に整えました。<br>
+                    意味が変わっていないか、元の記録と比較してご確認ください。
+                </p>
+            </div>
+            <div class="form-container">
+                <div style="margin-bottom: 2rem;">
+                    <label style="color: var(--text-muted); font-weight: bold; margin-bottom: 0.5rem; display: block;">【元の記録】</label>
+                    <div id="disp-original-details" class="record-box"></div>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <label for="organized-details" style="color: var(--accent-gold); font-weight: bold; margin-bottom: 0.5rem; display: block;">【整理された記録】</label>
+                    <textarea id="organized-details" class="organize-textarea" readonly></textarea>
+                </div>
+                
+                <div class="actions-vertical">
+                    <button class="btn-action-panel primary" id="btn-appraise-organized">整理された記録で査定する</button>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn-action-panel" id="btn-edit-organize">整理された記録を修正する</button>
+                        <button class="btn-action-panel" id="btn-appraise-original">元の記録のまま査定する</button>
+                    </div>
+                    <button class="btn-action-panel" id="btn-re-edit" style="border-color: var(--border-color); color: var(--text-muted);">最初から書き直す</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2.5: DEEPEN MEMORY (記憶の断片を探す) -->
+        <section id="view-deepen" class="view-section">
+            <div class="intro-box">
+                <h2>未整理の断片が検出されました</h2>
+                <p>
+                    記録を辿ると、まだ保存されていない記憶の欠片があるようです。<br>
+                    以下の問いをヒントに、思い出せるものがあれば追加してください。<br>
+                    <span style="font-size: 0.85rem; color: #7d6132;">※全てに答える必要はありません。</span>
+                </p>
+            </div>
+            <div class="form-container">
+                <div id="deepen-questions" style="margin-bottom: 2rem; color: var(--accent-gold); font-size: 0.95rem; line-height: 1.8; background: rgba(10, 8, 6, 0.4); padding: 1.5rem; border: 1px dashed rgba(195, 155, 80, 0.5); border-radius: 2px;">
+                    <!-- AI生成質問 -->
+                </div>
+                <div class="form-group">
+                    <label for="deepen-details">記憶の断片を追加する</label>
+                    <textarea id="deepen-details" placeholder="思い出した匂い、音、感情、色などを自由に書き足してください..."></textarea>
+                    <button type="button" id="btn-deepen-speech" class="btn-action" style="margin-top: 1rem;">
+                        <span id="deepen-speech-text">声で記録する</span>
+                    </button>
+                </div>
+                <div class="actions-area" style="flex-direction: column; gap: 1rem;">
+                    <button class="btn-action-panel primary" id="btn-submit-deepen">記録を追加して再整理する</button>
+                    <button class="btn-action-panel" id="btn-cancel-deepen" style="border-color: var(--border-color); color: var(--text-muted);">追加せずに戻る</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: ASSESSMENT RESULT -->
+        <section id="view-result" class="view-section">
+            <div class="result-container">
+                <div class="certificate" id="printable-certificate">
+                    <div class="cert-header">
+                        <h2>MEMORY MARKET</h2>
+                        <p>Asset Appraisal Receipt / 査定書</p>
+                    </div>
+
+                    <div class="cert-body">
+                        <div class="highlight-panel">
+                            <div class="price-box">
+                                <span class="price-label">ESTIMATED VALUATION / 査定価格</span>
+                                <span class="price-val" id="val-price">¥0</span>
+                            </div>
+                            <div class="rank-box">
+                                <span class="rank-label">CLASS RANK / 査定等級</span>
+                                <span class="rank-val" id="val-rank">C</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="label">記憶の題名</span>
+                            <span class="value" id="val-title">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">記憶の年代</span>
+                            <span class="value" id="val-period">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">同席者</span>
+                            <span class="value" id="val-companion">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="label">主な感情</span>
+                            <span class="value" id="val-emotion">-</span>
+                        </div>
+
+                        <!-- 査定対象の記憶 -->
+                        <div class="memory-text-block">
+                            <span class="block-label">【 査定対象の記憶 】</span>
+                            <p id="val-details">-</p>
+                        </div>
+
+                        <!-- 再査定時の比較表示ブロック -->
+                        <div id="reappraisal-diff-block" style="display: none; margin: 1.5rem 0 2.5rem 0; padding: 1.5rem; background-color: rgba(125, 97, 50, 0.05); border: 1px dashed rgba(195, 155, 80, 0.5); border-radius: 2px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(125, 97, 50, 0.4); padding-bottom: 1rem; margin-bottom: 1rem;">
+                                <div style="flex: 1;">
+                                    <span style="font-size: 0.75rem; color: #7d6132; font-weight: bold;">【 前回査定 】</span><br>
+                                    <span id="val-prev-price" style="font-size: 1.3rem; color: var(--text-muted); font-family: var(--font-mono); font-weight: bold;">-</span>
+                                </div>
+                                <div style="flex: 1; text-align: right;">
+                                    <span style="font-size: 0.75rem; color: #7d6132; font-weight: bold;">【 更新後査定 】</span><br>
+                                    <span id="val-new-price" style="font-size: 1.6rem; color: var(--accent-red); font-family: var(--font-mono); font-weight: bold;">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.75rem; color: #7d6132; font-weight: bold;">【 変化理由 】</span><br>
+                                <span id="val-change-reason" style="font-size: 0.95rem; color: var(--text-dark); line-height: 1.6;">-</span>
+                            </div>
+                        </div>
+
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <span class="m-label">希少性 / RARITY</span>
+                                <span class="m-val" id="val-rarity">0.0%</span>
+                                <div class="m-bar-container"><div class="m-bar" id="bar-rarity"></div></div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="m-label">感情濃度 / DENSITY</span>
+                                <span class="m-val" id="val-density">0.0%</span>
+                                <div class="m-bar-container"><div class="m-bar" id="bar-density"></div></div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="m-label">再現困難度 / DIFFICULT</span>
+                                <span class="m-val" id="val-repro">0%</span>
+                                <div class="m-bar-container"><div class="m-bar" id="bar-repro"></div></div>
+                            </div>
+                        </div>
+
+                        <div class="metrics-grid" style="margin-top: -1.2rem;">
+                            <div class="metric-card">
+                                <span class="m-label">未練係数 / REGRET</span>
+                                <span class="m-val" id="val-regret">0.00</span>
+                                <div class="m-bar-container"><div class="m-bar regret-bar" id="bar-regret"></div></div>
+                            </div>
+                            <div class="metric-card">
+                                <span class="m-label">記憶の曖昧さ / NOISE</span>
+                                <span class="m-val" id="val-noise">0.0%</span>
+                                <div class="m-bar-container"><div class="m-bar noise-bar" id="bar-noise"></div></div>
+                            </div>
+                            <div class="metric-card" style="display: flex; flex-direction: column; justify-content: center; border-style: solid; border-color: rgba(125, 97, 50, 0.4);">
+                                <span class="m-label" style="margin-bottom: 2px;">査定番号</span>
+                                <span id="val-hash" style="font-family: var(--font-mono); font-size: 0.8rem; color: #5c4314; font-weight: bold; word-break: break-all;">№000000</span>
+                            </div>
+                        </div>
+
+                        <div class="ai-comment-block">
+                            <span class="comment-title">【 査定士コメント 】</span>
+                            <p id="val-comment">...</p>
+                        </div>
+                    </div>
+
+                    <div class="cert-footer">
+                        <div>
+                            <div id="val-date">DATE: 2026/05/21</div>
+                            <div style="font-size: 0.65rem; color: #7d6132; margin-top: 2px; font-family: var(--font-serif);">MEMORY MARKET</div>
+                        </div>
+                        <div class="cert-stamp" id="val-stamp">査定済</div>
+                    </div>
+                </div>
+
+                <!-- 査定結果画面のアクション -->
+                <div style="text-align: center; color: var(--text-muted); margin-top: 2rem; font-size: 0.95rem; font-weight: bold; display: none;" id="post-appraisal-prompt">
+                    この記憶をどうしますか？
+                </div>
+                <div class="actions-area" style="flex-direction: column; gap: 1rem; margin-top: 1rem;" id="post-appraisal-actions">
+                    <button class="btn-action-panel primary" id="btn-save-confirm">このまま保管庫へ保存する</button>
+                    <button class="btn-action-panel" id="btn-deepen">記憶の断片を探す</button>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;" id="post-appraisal-back">
+                    <button class="btn-action" id="btn-back" style="border: none; color: #7d6132;">破棄して窓口へ戻る</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: HISTORY (古い台帳) -->
+        <section id="view-history" class="view-section">
+            <div class="vault-header">
+                <h2>記憶保管庫</h2>
+                <p>当店で査定を終えた記憶の控えです。</p>
+            </div>
+
+            <div class="vault-controls" id="vault-controls-area">
+                <button class="btn-clear-all" id="btn-clear-vault">保管庫を空にする</button>
+            </div>
+
+            <div id="history-list-container"></div>
+        </section>
+
+    </main>
+
+    <!-- Custom Dialogue Box -->
+    <div class="dialogue-overlay" id="confirm-dialogue">
+        <div class="dialogue-box">
+            <h3 id="dialogue-title">確認</h3>
+            <p id="dialogue-message">メッセージ</p>
+            <div class="dialogue-buttons">
+                <button class="dialogue-btn cancel" id="dialogue-btn-cancel">キャンセル</button>
+                <button class="dialogue-btn confirm-delete" id="dialogue-btn-confirm">実行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="scanning-overlay" id="scanning-screen">
+        <div class="antique-loader">
+            <div class="antique-ring"></div>
+            <div class="antique-ring-inner"></div>
+        </div>
+        <div class="scan-status" id="scan-main-status">記憶を読み取っています……</div>
+        <div class="scan-detail" id="scan-sub-status">...</div>
+    </div>
+
+    <script>
+        // ==========================================================================
+        // CONFIGURATION & STATE
+        // ==========================================================================
+        const EMOTIONS = {
+            nostalgia: { name: "郷愁・切なさ", short: "NOSTALGIA" },
+            joy: { name: "喜び・幸福", short: "EUPHORIA" },
+            sadness: { name: "悲しみ・喪失", short: "MELANCHOLY" },
+            anger: { name: "怒り・葛藤", short: "FRICTION" },
+            fear: { name: "恐れ・トラウマ", short: "PHOBIA" },
+            love: { name: "愛情・慈しみ", short: "AGAPE" }
+        };
+
+        let memoriesList = [];
+        let currentInputData = null;
+        let currentAppraisal = null;
+        let deleteIdHolder = null;
+        let isGlobalClear = false;
+        
+        let isReAppraisal = false;
+        let previousPriceStr = "";
+
+        // DOM
+        const viewHome = document.getElementById('view-home');
+        const viewOrganizeResult = document.getElementById('view-organize-result');
+        const viewDeepen = document.getElementById('view-deepen');
+        const viewResult = document.getElementById('view-result');
+        const viewHistory = document.getElementById('view-history');
+        const navHome = document.getElementById('nav-home');
+        const navHistory = document.getElementById('nav-history');
+
+        const scanningScreen = document.getElementById('scanning-screen');
+        const scanMainStatus = document.getElementById('scan-main-status');
+        const scanSubStatus = document.getElementById('scan-sub-status');
+        const confirmDialogue = document.getElementById('confirm-dialogue');
+
+        // Formatter
+        function formatPrice(priceRaw) {
+            const priceStr = String(priceRaw);
+            const num = parseInt(priceStr.replace(/[^0-9]/g, ''), 10);
+            if (isNaN(num)) return "¥0";
+            return "¥" + num.toLocaleString('ja-JP');
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            initSpeechRecognitionFor('btn-speech', 'speech-text', 'details');
+            initSpeechRecognitionFor('btn-deepen-speech', 'deepen-speech-text', 'deepen-details');
+        });
+
+        function initApp() {
+            loadFromLocalStorage();
+
+            navHome.addEventListener('click', () => switchView('home'));
+            navHistory.addEventListener('click', () => { renderHistory(); switchView('history'); });
+            document.getElementById('logo-click').addEventListener('click', (e) => { e.preventDefault(); switchView('home'); });
+
+            // フロー1: 整理リクエスト（初回）
+            document.getElementById('memory-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                isReAppraisal = false;
+                previousPriceStr = "";
+                
+                const title = document.getElementById('title').value.trim();
+                const details = document.getElementById('details').value.trim();
+                const period = document.getElementById('period').value.trim() || "年代：未記録";
+                let companion = document.getElementById('companion').value.trim();
+                const emotionKey = document.getElementById('emotion').value;
+
+                const validationErrors = validateMemory(title, details);
+                if (validationErrors.length > 0) {
+                    let errorHtml = "<div style='text-align: left; font-size: 0.95rem; line-height: 1.6;'>査定に必要な情報が不足しています。<br><br><span style='color: var(--accent-red);'>【確認事項】</span><br>";
+                    validationErrors.forEach(err => { errorHtml += `・${err}<br>`; });
+                    errorHtml += "</div>";
+                    showNotification("受付不能", errorHtml);
+                    return;
+                }
+
+                if (!companion || companion === "") companion = "単独";
+
+                currentInputData = { title, originalDetails: details, period, companion, emotionKey };
+                
+                processOrganize();
+            });
+
+            // フロー2: 整理結果の再編集・査定依頼
+            document.getElementById('btn-appraise-original').addEventListener('click', () => {
+                handleAppraisalRequest(currentInputData.originalDetails);
+            });
+            document.getElementById('btn-appraise-organized').addEventListener('click', () => {
+                const details = document.getElementById('organized-details').value.trim();
+                if(details.length === 0) {
+                    showNotification("確認事項", "記録内容が空欄です。査定には記憶の本文が必要です。");
+                    return;
+                }
+                handleAppraisalRequest(details);
+            });
+            document.getElementById('btn-edit-organize').addEventListener('click', () => {
+                const ta = document.getElementById('organized-details');
+                ta.removeAttribute('readonly');
+                ta.focus();
+                document.getElementById('btn-appraise-organized').textContent = "修正した記録で査定する";
+                document.getElementById('btn-edit-organize').style.display = 'none';
+            });
+            document.getElementById('btn-re-edit').addEventListener('click', () => switchView('home'));
+
+            // フロー3: 記憶の断片を探す (Deepen)
+            document.getElementById('btn-deepen').addEventListener('click', async () => {
+                showLoader("記憶の奥底を探っています……", "未整理の断片を検出中……");
+                try {
+                    const prompt = `以下の記憶の記録を読み、当時の五感（視覚、聴覚、嗅覚、触覚、味覚）や感情、状況などで不足している情報や、より深く思い出せそうなポイントを探るための質問を3〜5個作成してください。
+
+【記録】
+${currentInputData.details}
+
+【条件】
+・毎回同じ固定質問は禁止。内容に応じて変えること。
+・入力済みの情報は聞かないこと。
+・不足部分のみ聞くこと。
+・返却はJSONの配列形式（["質問1", "質問2", ...]）としてください。`;
+                    
+                    const schema = { type: "ARRAY", items: { type: "STRING" } };
+                    const jsonString = await callGeminiAPI(prompt, schema);
+                    const questions = JSON.parse(jsonString);
+                    
+                    const qContainer = document.getElementById('deepen-questions');
+                    qContainer.innerHTML = "<ul style='padding-left: 1.5rem;'>" + questions.map(q => `<li style="margin-bottom: 0.5rem;">${escapeHTML(q)}</li>`).join('') + "</ul>";
+                    
+                    document.getElementById('deepen-details').value = '';
+                    scanningScreen.classList.remove('active');
+                    switchView('deepen');
+                } catch (err) {
+                    scanningScreen.classList.remove('active');
+                    showNotification("通信エラー", "断片の検出に失敗しました。時間をおいてお試しください。");
+                }
+            });
+
+            document.getElementById('btn-submit-deepen').addEventListener('click', () => {
+                const addedDetails = document.getElementById('deepen-details').value.trim();
+                if (addedDetails.length === 0) {
+                    showNotification("確認事項", "追加する断片が入力されていません。");
+                    return;
+                }
+                
+                // 元の記録に追加
+                currentInputData.originalDetails += "\n\n【追加された断片】\n" + addedDetails;
+                isReAppraisal = true;
+                previousPriceStr = currentAppraisal.metrics.price;
+                
+                processOrganize();
+            });
+
+            document.getElementById('btn-cancel-deepen').addEventListener('click', () => {
+                switchView('result');
+            });
+
+            // アクションボタン
+            document.getElementById('btn-back').addEventListener('click', () => { 
+                document.getElementById('memory-form').reset(); 
+                isReAppraisal = false;
+                switchView('home'); 
+            });
+            document.getElementById('btn-save-confirm').addEventListener('click', () => {
+                if (currentAppraisal) {
+                    saveAppraisalToVault(currentAppraisal);
+                    showNotification("保管庫収録", "記憶を保管庫へ収録しました。");
+                    switchView('history');
+                    renderHistory();
+                }
+            });
+            document.getElementById('btn-clear-vault').addEventListener('click', showConfirmClear);
+            document.getElementById('dialogue-btn-cancel').addEventListener('click', closeDialogue);
+        }
+
+        // --- VIEWS ---
+        function switchView(target) {
+            viewHome.classList.remove('active');
+            viewOrganizeResult.classList.remove('active');
+            viewDeepen.classList.remove('active');
+            viewResult.classList.remove('active');
+            viewHistory.classList.remove('active');
+            navHome.classList.remove('active');
+            navHistory.classList.remove('active');
+
+            if (target === 'home') { viewHome.classList.add('active'); navHome.classList.add('active'); }
+            else if (target === 'organize-result') { viewOrganizeResult.classList.add('active'); }
+            else if (target === 'deepen') { viewDeepen.classList.add('active'); }
+            else if (target === 'result') { viewResult.classList.add('active'); }
+            else if (target === 'history') { viewHistory.classList.add('active'); navHistory.classList.add('active'); }
+        }
+
+        // --- GEMINI API COMMUNICATOR ---
+        async function callGeminiAPI(prompt, schema = null) {
+            const apiKey = ""; // API Key provided by Canvas execution environment
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+            if (schema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                };
+            }
+            
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    if (i === 4) throw error;
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+        }
+
+        function showLoader(mainText, subText) {
+            scanMainStatus.textContent = mainText;
+            scanSubStatus.textContent = subText;
+            scanningScreen.classList.add('active');
+        }
+
+        // --- VALIDATION ---
+        function validateMemory(title, details) {
+            const errors = [];
+            const trimmedTitle = title ? title.trim() : "";
+            if (trimmedTitle.length === 0) errors.push("記憶の題名が未入力です");
+
+            const trimmedDetails = details ? details.trim() : "";
+            if (trimmedDetails.length === 0) {
+                errors.push("記憶の記録が未入力です");
+            } else {
+                const noSpaceDetails = trimmedDetails.replace(/[\s　\n]/g, '');
+                if (/^[\d０-９\p{P}\p{S}]+$/u.test(noSpaceDetails)) {
+                    errors.push("記憶の記録が記号または数字のみです");
+                } 
+                else if (noSpaceDetails.length > 0 && new Set(noSpaceDetails).size === 1) {
+                    errors.push("同じ文字の繰り返しのみのため、記憶として扱えません");
+                }
+            }
+            return errors;
+        }
+
+        // --- ORGANIZE PROCESS ---
+        async function processOrganize() {
+            document.getElementById('disp-original-details').textContent = currentInputData.originalDetails;
+            
+            const orgTextArea = document.getElementById('organized-details');
+            orgTextArea.setAttribute('readonly', 'true');
+            
+            document.getElementById('btn-appraise-organized').textContent = "整理された記録で査定する";
+            document.getElementById('btn-edit-organize').style.display = 'block';
+
+            showLoader("記録を整理しています……", "記録係が断片的な記憶を台帳の文章に書き起こしています。");
+
+            try {
+                const prompt = `以下の断片的な記憶のメモや箇条書きを、査定士が読みやすい自然な文章（一つの記録文）に整理してください。
+
+【厳守する条件】
+- 箇条書きや断片的なメモは、前後の意味が通るように自然に繋ぐこと。
+- 入力にない人物、出来事、感情を絶対に追加（捏造）しないこと。
+- 足りない情報は補完せず、足りないままにすること。
+- 内容を盛らない、意味を変えないこと。
+- すでに文章として成立している場合は、大きく改変せず整える程度に留めること。
+
+【入力データ】
+タイトル: ${currentInputData.title}
+詳細: ${currentInputData.originalDetails}
+時期: ${currentInputData.period}
+同伴者: ${currentInputData.companion}
+感情カテゴリ: ${EMOTIONS[currentInputData.emotionKey].name}
+
+返却するテキストは、整理された記憶の文章のみにしてください。`;
+
+                const organizedDetails = await callGeminiAPI(prompt);
+                
+                scanningScreen.classList.remove('active');
+                orgTextArea.value = organizedDetails.trim();
+                switchView('organize-result');
+
+            } catch(err) {
+                scanningScreen.classList.remove('active');
+                showNotification("通信エラー", "記録係が整理中に躓いてしまいました。お手数ですが再度お試しください。");
+            }
+        }
+
+        // --- APPRAISAL REQUEST ---
+        async function handleAppraisalRequest(detailsToUse) {
+            currentInputData.details = detailsToUse;
+
+            showLoader("記憶を査定しています……", "査定士が感情の深さと稀少性を静かに量っています。");
+
+            try {
+                let prompt = `以下の記憶データを分析し、査定スコアと価格を算出してJSONで返してください。
+
+【入力データ】
+タイトル: ${currentInputData.title}
+詳細（整理済）: ${currentInputData.details}
+時期: ${currentInputData.period}
+同伴者: ${currentInputData.companion}
+感情カテゴリ: ${EMOTIONS[currentInputData.emotionKey].name}
+
+【分析項目】
+- rarity (希少性): 人生においてどれほど再現不可能な体験か。0-100の整数。
+- emotionDensity (感情濃度): その一瞬にどれほど濃厚な感情が注ぎ込まれていたか。0-100の整数。
+- reproducibility (再現困難度): 同様の体験を将来再現することがどれほど困難か。0-100の整数。
+- regret (未練係数): 後悔、心のひっかかり、心残り。0-100の整数。
+- noise (記憶の曖昧さ): 忘却による掠れ、美化、改変。0-100の整数。
+- rank (記憶ランク): "S", "A", "B", "C"のいずれか。
+- price (記憶価格): 感情の重さから算出した査定価格（数値のみを返してください）。
+- comment (査定士コメント): 古い質屋の査定士として、記憶に宿る感情を落ち着いた上品な言葉で評価する短いコメント。過度な装飾や小説のような言い回しは避け、静かに価値を伝えてください。
+- changeReason (変化理由): 再査定の場合は価格の変化理由を記述。初回の査定の場合は "-" を入れてください。`;
+
+                if (isReAppraisal) {
+                    prompt += `\n\n【再査定の条件】
+前回の査定価格は ${previousPriceStr} でした。今回は埋もれていた五感情報や感情情報などの「記憶の断片」が追加されたため、記憶の解像度が上がり、基本的には前回以上の価値が見込まれます。
+なぜ価格が変化したのか、その理由を「changeReason」に20文字〜40文字程度で記述してください。（例：「五感情報と感情情報が追加されたため」「記憶の解像度が上がり、稀少性が増したため」など）`;
+                }
+
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        price: { type: "STRING" },
+                        rarity: { type: "INTEGER" },
+                        emotionDensity: { type: "INTEGER" },
+                        reproducibility: { type: "INTEGER" },
+                        regret: { type: "INTEGER" },
+                        noise: { type: "INTEGER" },
+                        rank: { type: "STRING" },
+                        comment: { type: "STRING" },
+                        changeReason: { type: "STRING" }
+                    },
+                    required: ["price", "rarity", "emotionDensity", "reproducibility", "regret", "noise", "rank", "comment", "changeReason"]
+                };
+
+                const jsonString = await callGeminiAPI(prompt, schema);
+                const result = JSON.parse(jsonString);
+                
+                scanningScreen.classList.remove('active');
+                
+                const seed = generateStringHash(currentInputData.title + currentInputData.details + Date.now());
+                const secureID = '№' + (seed % 1000000).toString().padStart(6, '0');
+
+                currentAppraisal = {
+                    id: Date.now().toString(),
+                    title: currentInputData.title,
+                    details: currentInputData.details,
+                    period: currentInputData.period,
+                    companion: currentInputData.companion,
+                    emotionKey: currentInputData.emotionKey,
+                    emotionName: EMOTIONS[currentInputData.emotionKey].name,
+                    metrics: {
+                        price: formatPrice(result.price),
+                        rank: result.rank,
+                        rarity: result.rarity.toFixed(1),
+                        density: result.emotionDensity.toFixed(1),
+                        repro: result.reproducibility,
+                        regret: (result.regret / 100).toFixed(2), 
+                        noise: result.noise.toFixed(1),
+                        secureID: secureID,
+                        comment: result.comment,
+                        date: new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+                        isReAppraisal: isReAppraisal,
+                        previousPrice: isReAppraisal ? previousPriceStr : null,
+                        changeReason: result.changeReason
+                    }
+                };
+                
+                displayAppraisalResult(currentAppraisal);
+                
+                // Show Post-Appraisal Actions
+                document.getElementById('post-appraisal-prompt').style.display = 'block';
+                document.getElementById('post-appraisal-actions').style.display = 'flex';
+                document.getElementById('post-appraisal-back').style.display = 'block';
+                
+                switchView('result');
+
+            } catch(err) {
+                scanningScreen.classList.remove('active');
+                showNotification("通信エラー", "査定所との通信に失敗しました。しばらく経ってから再度お試しください。");
+            }
+        }
+
+        // --- RENDER APPRAISAL PAGE ---
+        function displayAppraisalResult(appraisal) {
+            const m = appraisal.metrics;
+            document.getElementById('val-price').textContent = m.price;
+            document.getElementById('val-rank').textContent = m.rank;
+            document.getElementById('val-title').textContent = appraisal.title;
+            document.getElementById('val-period').textContent = appraisal.period;
+            document.getElementById('val-companion').textContent = appraisal.companion;
+            document.getElementById('val-emotion').textContent = appraisal.emotionName;
+            document.getElementById('val-details').textContent = appraisal.details;
+            document.getElementById('val-rarity').textContent = m.rarity + '%';
+            document.getElementById('val-density').textContent = m.density + '%';
+            document.getElementById('val-repro').textContent = m.repro + '%';
+            document.getElementById('val-regret').textContent = m.regret;
+            document.getElementById('val-noise').textContent = m.noise + '%';
+            document.getElementById('val-hash').textContent = m.secureID;
+            document.getElementById('val-comment').textContent = m.comment;
+            document.getElementById('val-date').textContent = 'DATE: ' + m.date;
+
+            const stamp = document.getElementById('val-stamp');
+            stamp.textContent = `査定済 ${m.rank}級`;
+            if (m.rank === 'S') {
+                stamp.style.borderColor = "rgba(139, 30, 30, 0.9)";
+                stamp.style.color = "rgba(139, 30, 30, 0.95)";
+                stamp.style.transform = "rotate(-12deg) scale(1.1)";
+            } else {
+                stamp.style.borderColor = "rgba(125, 97, 50, 0.7)";
+                stamp.style.color = "rgba(125, 97, 50, 0.8)";
+                stamp.style.transform = "rotate(-5deg) scale(1)";
+            }
+
+            if (m.isReAppraisal) {
+                document.getElementById('reappraisal-diff-block').style.display = 'block';
+                document.getElementById('val-prev-price').textContent = m.previousPrice;
+                document.getElementById('val-new-price').textContent = m.price;
+                document.getElementById('val-change-reason').textContent = m.changeReason;
+            } else {
+                document.getElementById('reappraisal-diff-block').style.display = 'none';
+            }
+
+            setTimeout(() => {
+                document.getElementById('bar-rarity').style.width = m.rarity + '%';
+                document.getElementById('bar-density').style.width = m.density + '%';
+                document.getElementById('bar-repro').style.width = m.repro + '%';
+                document.getElementById('bar-regret').style.width = (parseFloat(m.regret) * 100) + '%';
+                document.getElementById('bar-noise').style.width = m.noise + '%';
+            }, 100);
+        }
+
+        // --- LOCAL STORAGE UTILITIES ---
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem('memory_market_vault');
+            if (stored) {
+                try { memoriesList = JSON.parse(stored); } 
+                catch (e) { memoriesList = []; }
+            }
+        }
+        function saveToLocalStorage() { localStorage.setItem('memory_market_vault', JSON.stringify(memoriesList)); }
+
+        // --- VAULT STORE OPERATION ---
+        function saveAppraisalToVault(appraisal) {
+            const exists = memoriesList.some(item => item.id === appraisal.id);
+            if (!exists) { memoriesList.unshift(appraisal); saveToLocalStorage(); }
+        }
+        function deleteFromVault(id) { memoriesList = memoriesList.filter(item => item.id !== id); saveToLocalStorage(); renderHistory(); }
+        function clearAllVault() { memoriesList = []; saveToLocalStorage(); renderHistory(); }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list-container');
+            container.innerHTML = '';
+            if (memoriesList.length === 0) {
+                document.getElementById('vault-controls-area').style.display = 'none';
+                container.innerHTML = `<div class="empty-vault-message"><p>記憶保管庫にはまだ何も記されていません。</p><button class="btn-action" onclick="switchView('home')">査定窓口へ向かう</button></div>`;
+                return;
+            }
+            document.getElementById('vault-controls-area').style.display = 'flex';
+            memoriesList.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'history-card';
+                card.innerHTML = `
+                    <div class="card-details">
+                        <h3 class="card-title">${escapeHTML(item.title)}</h3>
+                        <div class="card-meta">
+                            <span>${item.metrics.date}</span>
+                            <span>${item.emotionName}</span>
+                        </div>
+                    </div>
+                    <div class="card-price-rank">
+                        <div class="card-price">${item.metrics.price}</div>
+                        <div class="card-rank">${item.metrics.rank}級 記憶</div>
+                    </div>
+                    <button class="btn-card-delete" data-id="${item.id}" data-title="${escapeHTML(item.title)}">記録を破棄する</button>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('btn-card-delete')) return;
+                    currentAppraisal = item; displayAppraisalResult(item);
+                    
+                    // 履歴から見た場合はアクションボタンを隠す
+                    document.getElementById('post-appraisal-prompt').style.display = 'none';
+                    document.getElementById('post-appraisal-actions').style.display = 'none';
+                    document.getElementById('post-appraisal-back').style.display = 'none';
+                    document.getElementById('btn-save-confirm').style.display = 'none';
+                    
+                    switchView('result');
+                });
+                card.querySelector('.btn-card-delete').addEventListener('click', (e) => {
+                    e.stopPropagation(); showConfirmDelete(item.id, item.title);
+                });
+                container.appendChild(card);
+            });
+        }
+
+        // --- UTILS & DIALOGUE ---
+        function showNotification(title, message) {
+            document.getElementById('dialogue-title').textContent = title;
+            document.getElementById('dialogue-message').innerHTML = message;
+            const btnConfirm = document.getElementById('dialogue-btn-confirm');
+            btnConfirm.textContent = "承知いたしました";
+            btnConfirm.style.borderColor = "var(--accent-gold)";
+            btnConfirm.style.color = "var(--accent-gold)";
+            const tempConfirm = () => { closeDialogue(); btnConfirm.removeEventListener('click', tempConfirm); };
+            btnConfirm.addEventListener('click', tempConfirm);
+            document.getElementById('dialogue-btn-cancel').style.display = "none";
+            confirmDialogue.classList.add('active');
+        }
+
+        function showConfirmDelete(id, title) {
+            deleteIdHolder = id; isGlobalClear = false;
+            document.getElementById('dialogue-title').textContent = "記録の破棄";
+            document.getElementById('dialogue-message').textContent = `保管庫から記憶「${title}」の査定記録を完全に破棄します。よろしいですか？`;
+            setupConfirmAction("記録を破棄する", () => { if (!isGlobalClear) deleteFromVault(deleteIdHolder); });
+        }
+
+        function showConfirmClear() {
+            isGlobalClear = true;
+            document.getElementById('dialogue-title').textContent = "保管庫の整理";
+            document.getElementById('dialogue-message').textContent = "保管庫に記録された全ての査定データを破棄し、空にします。本当によろしいですか？";
+            setupConfirmAction("保管庫を空にする", () => { if (isGlobalClear) clearAllVault(); });
+        }
+
+        function setupConfirmAction(btnText, actionFn) {
+            const btnConfirm = document.getElementById('dialogue-btn-confirm');
+            btnConfirm.textContent = btnText;
+            btnConfirm.style.borderColor = "var(--accent-red)";
+            btnConfirm.style.color = "var(--accent-red)";
+            const confirmAction = () => { actionFn(); closeDialogue(); btnConfirm.removeEventListener('click', confirmAction); };
+            btnConfirm.addEventListener('click', confirmAction);
+            document.getElementById('dialogue-btn-cancel').style.display = "block";
+            confirmDialogue.classList.add('active');
+        }
+
+        function closeDialogue() { confirmDialogue.classList.remove('active'); }
+        function generateStringHash(str) {
+            let hash = 0; if (str.length === 0) return hash;
+            for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash = hash & hash; }
+            return Math.abs(hash);
+        }
+        function escapeHTML(str) { return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+
+        // --- SPEECH RECOGNITION ---
+        function initSpeechRecognitionFor(btnId, textId, inputId) {
+            const btnSpeech = document.getElementById(btnId);
+            const speechText = document.getElementById(textId);
+            const detailsField = document.getElementById(inputId);
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                btnSpeech.addEventListener('click', () => showNotification("お知らせ", "ブラウザが音声入力に対応していないようです。恐れ入りますが、筆記にてご入力ください。"));
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP'; recognition.interimResults = false; recognition.maxAlternatives = 1;
+            let isRecording = false;
+
+            recognition.onstart = () => { isRecording = true; btnSpeech.style.borderColor = "var(--accent-red)"; btnSpeech.style.color = "var(--accent-red)"; speechText.textContent = "お伺いしております……"; };
+            recognition.onend = () => { isRecording = false; btnSpeech.style.borderColor = "var(--accent-gold)"; btnSpeech.style.color = "var(--accent-gold)"; speechText.textContent = "声で記録する"; };
+            recognition.onerror = (event) => {
+                isRecording = false; btnSpeech.style.borderColor = "var(--accent-gold)"; btnSpeech.style.color = "var(--accent-gold)"; speechText.textContent = "声で記録する";
+                if (event.error === 'not-allowed') showNotification("ご確認ください", "マイクの使用が許可されていないようです。ブラウザの設定をご確認ください。");
+                else if (event.error === 'no-speech') showNotification("お知らせ", "音声が聞き取れませんでした。もう一度お試しください。");
+            };
+            recognition.onresult = (event) => {
+                const resultText = event.results[0][0].transcript;
+                detailsField.value = detailsField.value.trim() ? detailsField.value.trim() + " " + resultText : resultText;
+                detailsField.dispatchEvent(new Event('input'));
+            };
+            btnSpeech.addEventListener('click', () => { isRecording ? recognition.stop() : recognition.start(); });
+        }
+    </script>
+</body>
+</html>
